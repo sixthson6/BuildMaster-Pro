@@ -1,0 +1,71 @@
+package com.tech.controller;
+
+import com.tech.dto.CreateTaskDTO;
+import com.tech.dto.TaskDTO;
+import com.tech.service.TaskService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+
+@RestController
+@RequestMapping("/api/tasks")
+@RequiredArgsConstructor
+public class TaskController {
+
+    private final TaskService taskService;
+
+    @GetMapping
+    public ResponseEntity<Page<TaskDTO>> getAllTasks(Pageable pageable) {
+        Page<TaskDTO> tasks = taskService.getAllTasks(pageable);
+        return ResponseEntity.ok(tasks);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
+        TaskDTO task = taskService.getTaskById(Math.toIntExact(id));
+        return ResponseEntity.ok(task);
+    }
+
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<Page<TaskDTO>> getTasksByProject(@PathVariable Long projectId, Pageable pageable) {
+        Page<TaskDTO> tasks = taskService.getTasksByProjectId(Math.toIntExact(projectId), pageable);
+        return ResponseEntity.ok(tasks);
+    }
+
+    @GetMapping("/developer/{developerId}")
+    public ResponseEntity<Page<TaskDTO>> getTasksByDeveloper(@PathVariable Long developerId, Pageable pageable) {
+        Page<TaskDTO> tasks = taskService.getTasksByDeveloperId(Math.toIntExact(developerId), pageable);
+        return ResponseEntity.ok(tasks);
+    }
+
+    @PostMapping
+    public ResponseEntity<TaskDTO> createTask(@Valid @RequestBody CreateTaskDTO createTaskDTO) {
+        TaskDTO createdTask = taskService.createTask(createTaskDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id,
+                                              @Valid @RequestBody CreateTaskDTO updateTaskDTO) {
+        TaskDTO updatedTask = taskService.updateTask(Math.toIntExact(id), updateTaskDTO);
+        return ResponseEntity.ok(updatedTask);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
+        taskService.deleteTask(Math.toIntExact(id));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{taskId}/assign/{developerId}")
+    public ResponseEntity<TaskDTO> assignDeveloperToTask(@PathVariable Long taskId,
+                                                         @PathVariable Long developerId) {
+        TaskDTO updatedTask = taskService.assignDeveloperToTask(Math.toIntExact(taskId), Math.toIntExact(developerId));
+        return ResponseEntity.ok(updatedTask);
+    }
+}
