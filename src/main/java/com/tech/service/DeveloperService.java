@@ -1,5 +1,6 @@
 package com.tech.service;
 
+import com.tech.auditlog.AuditService;
 import com.tech.dto.CreateDeveloperDTO;
 import com.tech.dto.DeveloperDTO;
 import com.tech.mapper.DeveloperMapper;
@@ -20,7 +21,7 @@ public class DeveloperService {
 
     private final DeveloperRepository developerRepository;
     private final DeveloperMapper developerMapper;
-
+    private final AuditService auditService;
 
     public Page<DeveloperDTO> getAllDevelopers(Pageable pageable) {
         return developerRepository.findAll(pageable)
@@ -38,6 +39,11 @@ public class DeveloperService {
     public DeveloperDTO createDeveloper(CreateDeveloperDTO createDeveloperDTO) {
         Developer developer = developerMapper.toEntity(createDeveloperDTO);
         Developer savedDeveloper = developerRepository.save(developer);
+
+        // Log the creation
+        auditService.logAction("Developer", savedDeveloper.getId().toString(),
+                "CREATE", getCurrentUser(), savedDeveloper);
+
         return developerMapper.toDto(savedDeveloper);
     }
 
@@ -46,16 +52,39 @@ public class DeveloperService {
         Developer existingDeveloper = developerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + id));
 
+        // Store previous state for audit
+        Developer previousState = Developer.builder()
+                .id(existingDeveloper.getId())
+                .name(existingDeveloper.getName())
+                .email(existingDeveloper.getEmail())
+                .skills(existingDeveloper.getSkills())
+                .build();
+
         developerMapper.updateEntityFromDto(updateDeveloperDTO, existingDeveloper);
         Developer updatedDeveloper = developerRepository.save(existingDeveloper);
+
+        // Log the update
+        auditService.logAction("Developer", updatedDeveloper.getId().toString(),
+                "UPDATE", getCurrentUser(), updatedDeveloper, previousState);
+
         return developerMapper.toDto(updatedDeveloper);
     }
 
     @Transactional
     public void deleteDeveloper(Long id) {
-        if (!developerRepository.existsById(id)) {
-            throw new EntityNotFoundException("Developer not found with id: " + id);
-        }
+        Developer developer = developerRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + id));
+
+        // Log the deletion before actually deleting
+        auditService.logAction("Developer", id.toString(),
+                "DELETE", getCurrentUser(), developer);
+
         developerRepository.deleteById(id);
+    }
+
+    private String getCurrentUser() {
+        // In a real application, this would get the current authenticated user
+        // For now, return a default value
+        return "system";
     }
 }

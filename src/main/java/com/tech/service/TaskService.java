@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.tech.auditlog.AuditService;
 
 import java.util.List;
 
@@ -27,6 +28,7 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final DeveloperRepository developerRepository;
     private final TaskMapper taskMapper;
+    private final AuditService auditService;
 
     public Page<TaskDTO> getAllTasks(Pageable pageable) {
         return taskRepository.findAll(pageable)
@@ -63,6 +65,11 @@ public class TaskService {
         }
 
         Task savedTask = taskRepository.save(task);
+
+        // Log the creation
+        auditService.logAction("Task", savedTask.getId().toString(),
+                "CREATE", getCurrentUser(), savedTask);
+
         return taskMapper.toDto(savedTask);
     }
 
@@ -70,6 +77,16 @@ public class TaskService {
     public TaskDTO updateTask(Integer id, CreateTaskDTO updateTaskDTO) {
         Task existingTask = taskRepository.findById(Long.valueOf(id))
                 .orElseThrow(() -> new EntityNotFoundException("Task not found with id: " + id));
+
+        // Store previous state for audit
+        Task previousState = new Task();
+        previousState.setId(existingTask.getId());
+        previousState.setTitle(existingTask.getTitle());
+        previousState.setDescription(existingTask.getDescription());
+        previousState.setStatus(existingTask.getStatus());
+        previousState.setDueDate(existingTask.getDueDate());
+        previousState.setProject(existingTask.getProject());
+        previousState.setAssignedDevelopers(existingTask.getAssignedDevelopers());
 
         taskMapper.updateEntityFromDto(updateTaskDTO, existingTask);
 
@@ -79,14 +96,23 @@ public class TaskService {
         }
 
         Task updatedTask = taskRepository.save(existingTask);
+
+        // Log the update
+        auditService.logAction("Task", updatedTask.getId().toString(),
+                "UPDATE", getCurrentUser(), updatedTask, previousState);
+
         return taskMapper.toDto(updatedTask);
     }
 
     @Transactional
     public void deleteTask(Integer id) {
-        if (!taskRepository.existsById(Long.valueOf(id))) {
-            throw new EntityNotFoundException("Task not found with id: " + id);
-        }
+        Task task = taskRepository.findById(Long.valueOf(id))
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with id: " + id));
+
+        // Log the deletion before actually deleting
+        auditService.logAction("Task", id.toString(),
+                "DELETE", getCurrentUser(), task);
+
         taskRepository.deleteById(Long.valueOf(id));
     }
 
@@ -98,11 +124,26 @@ public class TaskService {
         Developer developer = developerRepository.findById(Long.valueOf(developerId))
                 .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + developerId));
 
+        // Store previous state for audit
+        Task previousState = new Task();
+        previousState.setId(task.getId());
+        previousState.setAssignedDevelopers(List.copyOf(task.getAssignedDevelopers()));
+
         if (!task.getAssignedDevelopers().contains(developer)) {
             task.getAssignedDevelopers().add(developer);
             taskRepository.save(task);
+
+            // Log the assignment
+            auditService.logAction("Task", taskId.toString(),
+                    "ASSIGN_DEVELOPER", getCurrentUser(), task, previousState);
         }
 
         return taskMapper.toDto(task);
+    }
+
+    private String getCurrentUser() {
+        // In a real application, this would get the current authenticated user
+        // For now, return a default value
+        return "system";
     }
 }
