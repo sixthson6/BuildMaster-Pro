@@ -27,6 +27,7 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final DeveloperRepository developerRepository;
     private final TaskMapper taskMapper;
+    private final AuditLogService auditLogService;
 
     public Page<TaskDTO> getAllTasks(Pageable pageable) {
         return taskRepository.findAll(pageable)
@@ -63,7 +64,9 @@ public class TaskService {
         }
 
         Task savedTask = taskRepository.save(task);
-        return taskMapper.toDto(savedTask);
+        TaskDTO taskDTO = taskMapper.toDto(savedTask);
+        auditLogService.logTaskAction("CREATE", taskDTO);
+        return taskDTO;
     }
 
     @Transactional
@@ -79,7 +82,9 @@ public class TaskService {
         }
 
         Task updatedTask = taskRepository.save(existingTask);
-        return taskMapper.toDto(updatedTask);
+        TaskDTO taskDTO = taskMapper.toDto(updatedTask);
+        auditLogService.logTaskAction("UPDATE", taskDTO);
+        return taskDTO;
     }
 
     @Transactional
@@ -87,7 +92,10 @@ public class TaskService {
         if (!taskRepository.existsById(Long.valueOf(id))) {
             throw new EntityNotFoundException("Task not found with id: " + id);
         }
+
         taskRepository.deleteById(Long.valueOf(id));
+        auditLogService.logTaskAction("DELETE", new TaskDTO());
+
     }
 
     @Transactional
