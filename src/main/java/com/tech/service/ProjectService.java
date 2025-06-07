@@ -1,88 +1,115 @@
 package com.tech.service;
 
-import com.tech.dto.CreateProjectDTO;
-import com.tech.dto.ProjectDTO;
-import com.tech.mapper.ProjectMapper;
+import com.tech.auditlog.AuditService;
 import com.tech.model.Project;
 import com.tech.repository.ProjectRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.tech.auditlog.AuditService;
+
+import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Slf4j
+@Transactional
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
-    private final ProjectMapper projectMapper;
     private final AuditService auditService;
 
-    public Page<ProjectDTO> getAllProjects(Pageable pageable) {
-        return projectRepository.findAll(pageable)
-                .map(projectMapper::toDto);
-    }
+    public Project createProject(Project project, String actorName) {
+        log.info("Creating new project: {} by user: {}", project.getName(), actorName);
 
-    public ProjectDTO getProjectById(Long id) {
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + id));
-        return projectMapper.toDto(project);
-    }
-
-    @Transactional
-    public ProjectDTO createProject(CreateProjectDTO createProjectDTO) {
-        Project project = projectMapper.toEntity(createProjectDTO);
         Project savedProject = projectRepository.save(project);
 
-        // Log the creation
-        auditService.logAction("Project", savedProject.getId().toString(),
-                "CREATE", getCurrentUser(), savedProject);
+        // Log the create action - only current data, no previous data
+        auditService.logAction("Project", savedProject.getId().toString(), "CREATE", actorName, savedProject);
 
-        return projectMapper.toDto(savedProject);
+        log.info("Project created successfully with ID: {}", savedProject.getId());
+        return savedProject;
     }
 
-    @Transactional
-    public ProjectDTO updateProject(Long id, CreateProjectDTO updateProjectDTO) {
-        Project existingProject = projectRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + id));
+    public Project updateProject(Long projectId, Project updatedProject, String actorName) {
+        log.info("Updating project with ID: {} by user: {}", projectId, actorName);
 
-        // Store previous state for audit
-        Project previousState = new Project();
-        previousState.setId(existingProject.getId());
-        previousState.setName(existingProject.getName());
-        previousState.setDescription(existingProject.getDescription());
-        previousState.setDeadline(existingProject.getDeadline());
-        previousState.setStatus(existingProject.getStatus());
+        Project existingProject = projectRepository.findById(projectId)
+                .orElseThrow(() -> new EntityNotFoundException("Project not found with ID: " + projectId));
 
-        projectMapper.updateEntityFromDto(updateProjectDTO, existingProject);
-        Project updatedProject = projectRepository.save(existingProject);
+        // Create a copy of the existing project for audit logging
+        Project previousProject = createProjectCopy(existingProject);
 
-        // Log the update
-        auditService.logAction("Project", updatedProject.getId().toString(),
-                "UPDATE", getCurrentUser(), updatedProject, previousState);
+        // Update the project fields
+        existingProject.setName(updatedProject.getName());
+        existingProject.setDescription(updatedProject.getDescription());
+        existingProject.setStartDate(updatedProject.getStartDate());
+        existingProject.setEndDate(updatedProject.getEndDate());
+        existingProject.setStatus(updatedProject.getStatus());
+        existingProject.setBudget(updatedProject.getBudget());
+        existingProject.setTeamLead(updatedProject.getTeamLead());
 
-        return projectMapper.toDto(updatedProject);
+        Project savedProject = projectRepository.save(existingProject);
+
+        // Log the update action with both current and previous data
+        auditService.logAction("Project", projectId.toString(), "UPDATE", actorName, savedProject, previousProject);
+
+        log.info("Project updated successfully with ID: {}", projectId);
+        return savedProject;
     }
 
-    @Transactional
-    public void deleteProject(Long id) {
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + id));
+    public void deleteProject(Long projectId, String actorName) {
+        log.info("Deleting project with ID: {} by user: {}", projectId, actorName);
 
-        // Log the deletion before actually deleting
-        auditService.logAction("Project", id.toString(),
-                "DELETE", getCurrentUser(), project);
+        Project existingProject = projectRepository.findById(projectId)
+                .orElseThrow(() -> new EntityNotFoundException("Project not found with ID: " + projectId));
 
-        projectRepository.deleteById(id);
+        projectRepository.deleteById(projectId);
+
+        // Log the delete action - no current data, only previous data
+        auditService.logAction("Project", projectId.toString(), "DELETE", actorName, null, existingProject);
+
+        log.info("Project deleted successfully with ID: {}", projectId);
     }
 
-    private String getCurrentUser() {
-        // In a real application, this would get the current authenticated user
-        // For now, return a default value
-        return "system";
+    // Read operations (no audit logging needed)
+    public Optional<Project> getProjectById(Long projectId) {
+        return projectRepository.findById(projectId);
+    }
+
+    public List<Project> getAllProjects() {
+        return projectRepository.findAll();
+    }
+
+    public Page<Project> getProjectsPaginated(Pageable pageable) {
+        return projectRepository.findAll(pageable);
+    }
+
+    public List<Project> getProjectsByStatus(String status) {
+        return projectRepository.findByStatus(status);
+    }
+
+    public List<Project> getProjectsByTeamLead(String teamLead) {
+        return projectRepository.findByTeamLead(teamLead);
+    }
+
+    // Helper method to create a copy for audit logging
+    private Project createProjectCopy(Project original) {
+        Project copy = new Project();
+        copy.setId(original.getId());
+        copy.setName(original.getName());
+        copy.setDescription(original.getDescription());
+        copy.setStartDate(original.getStartDate());
+        copy.setEndDate(original.getEndDate());
+        copy.setStatus(original.getStatus());
+        copy.setBudget(original.getBudget());
+        copy.setTeamLead(original.getTeamLead());
+        copy.setCreatedAt(original.getCreatedAt());
+        copy.setUpdatedAt(original.getUpdatedAt());
+        return copy;
     }
 }

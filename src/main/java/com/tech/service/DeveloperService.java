@@ -1,90 +1,171 @@
 package com.tech.service;
 
 import com.tech.auditlog.AuditService;
-import com.tech.dto.CreateDeveloperDTO;
-import com.tech.dto.DeveloperDTO;
-import com.tech.mapper.DeveloperMapper;
 import com.tech.model.Developer;
 import com.tech.repository.DeveloperRepository;
-import org.springframework.cache.annotation.Cacheable;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Slf4j
+@Transactional
 public class DeveloperService {
 
     private final DeveloperRepository developerRepository;
-    private final DeveloperMapper developerMapper;
     private final AuditService auditService;
 
-    public Page<DeveloperDTO> getAllDevelopers(Pageable pageable) {
-        return developerRepository.findAll(pageable)
-                .map((java.util.function.Function<? super Developer, ? extends DeveloperDTO>) developerMapper::toDto);
-    }
+    public Developer createDeveloper(Developer developer, String actorName) {
+        log.info("Creating new developer: {} by user: {}", developer.getName(), actorName);
 
-    @Cacheable("developers")
-    public DeveloperDTO getDeveloperById(Long id) {
-        Developer developer = developerRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + id));
-        return developerMapper.toDto(developer);
-    }
-
-    @Transactional
-    public DeveloperDTO createDeveloper(CreateDeveloperDTO createDeveloperDTO) {
-        Developer developer = developerMapper.toEntity(createDeveloperDTO);
         Developer savedDeveloper = developerRepository.save(developer);
 
-        // Log the creation
-        auditService.logAction("Developer", savedDeveloper.getId().toString(),
-                "CREATE", getCurrentUser(), savedDeveloper);
+        // Log the create action
+        auditService.logAction("Developer", savedDeveloper.getId().toString(), "CREATE", actorName, savedDeveloper);
 
-        return developerMapper.toDto(savedDeveloper);
+        log.info("Developer created successfully with ID: {}", savedDeveloper.getId());
+        return savedDeveloper;
     }
 
-    @Transactional
-    public DeveloperDTO updateDeveloper(Long id, CreateDeveloperDTO updateDeveloperDTO) {
-        Developer existingDeveloper = developerRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + id));
+    public Developer updateDeveloper(Long developerId, Developer updatedDeveloper, String actorName) {
+        log.info("Updating developer with ID: {} by user: {}", developerId, actorName);
 
-        // Store previous state for audit
-        Developer previousState = Developer.builder()
-                .id(existingDeveloper.getId())
-                .name(existingDeveloper.getName())
-                .email(existingDeveloper.getEmail())
-                .skills(existingDeveloper.getSkills())
-                .build();
+        Developer existingDeveloper = developerRepository.findById(developerId)
+                .orElseThrow(() -> new EntityNotFoundException("Developer not found with ID: " + developerId));
 
-        developerMapper.updateEntityFromDto(updateDeveloperDTO, existingDeveloper);
-        Developer updatedDeveloper = developerRepository.save(existingDeveloper);
+        // Create a copy of the existing developer for audit logging
+        Developer previousDeveloper = createDeveloperCopy(existingDeveloper);
 
-        // Log the update
-        auditService.logAction("Developer", updatedDeveloper.getId().toString(),
-                "UPDATE", getCurrentUser(), updatedDeveloper, previousState);
+        // Update the developer fields
+        existingDeveloper.setName(updatedDeveloper.getName());
+        existingDeveloper.setEmail(updatedDeveloper.getEmail());
+        existingDeveloper.setRole(updatedDeveloper.getRole());
+        existingDeveloper.setExperienceLevel(updatedDeveloper.getExperienceLevel());
+        existingDeveloper.setSkills(updatedDeveloper.getSkills());
+        existingDeveloper.setDepartment(updatedDeveloper.getDepartment());
+        existingDeveloper.setSalary(updatedDeveloper.getSalary());
+        existingDeveloper.setHireDate(updatedDeveloper.getHireDate());
+        existingDeveloper.setStatus(updatedDeveloper.getStatus());
 
-        return developerMapper.toDto(updatedDeveloper);
+        Developer savedDeveloper = developerRepository.save(existingDeveloper);
+
+        // Log the update action with both current and previous data
+        auditService.logAction("Developer", developerId.toString(), "UPDATE", actorName, savedDeveloper, previousDeveloper);
+
+        log.info("Developer updated successfully with ID: {}", developerId);
+        return savedDeveloper;
     }
 
-    @Transactional
-    public void deleteDeveloper(Long id) {
-        Developer developer = developerRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + id));
+    public void deleteDeveloper(Long developerId, String actorName) {
+        log.info("Deleting developer with ID: {} by user: {}", developerId, actorName);
 
-        // Log the deletion before actually deleting
-        auditService.logAction("Developer", id.toString(),
-                "DELETE", getCurrentUser(), developer);
+        Developer existingDeveloper = developerRepository.findById(developerId)
+                .orElseThrow(() -> new EntityNotFoundException("Developer not found with ID: " + developerId));
 
-        developerRepository.deleteById(id);
+        developerRepository.deleteById(developerId);
+
+        // Log the delete action
+        auditService.logAction("Developer", developerId.toString(), "DELETE", actorName, null, existingDeveloper);
+
+        log.info("Developer deleted successfully with ID: {}", developerId);
     }
 
-    private String getCurrentUser() {
-        // In a real application, this would get the current authenticated user
-        // For now, return a default value
-        return "system";
+    // Developer status update with audit logging
+    public Developer updateDeveloperStatus(Long developerId, String newStatus, String actorName) {
+        log.info("Updating developer status for ID: {} to {} by user: {}", developerId, newStatus, actorName);
+
+        Developer existingDeveloper = developerRepository.findById(developerId)
+                .orElseThrow(() -> new EntityNotFoundException("Developer not found with ID: " + developerId));
+
+        Developer previousDeveloper = createDeveloperCopy(existingDeveloper);
+        String oldStatus = existingDeveloper.getStatus();
+
+        existingDeveloper.setStatus(newStatus);
+        Developer savedDeveloper = developerRepository.save(existingDeveloper);
+
+        // Log the status update
+        auditService.logAction("Developer", developerId.toString(), "STATUS_UPDATE", actorName, savedDeveloper, previousDeveloper);
+
+        log.info("Developer status updated from {} to {} for ID: {}", oldStatus, newStatus, developerId);
+        return savedDeveloper;
+    }
+
+    // Salary update with special audit logging (sensitive data)
+    public Developer updateDeveloperSalary(Long developerId, Double newSalary, String actorName) {
+        log.info("Updating developer salary for ID: {} by user: {}", developerId, actorName);
+
+        Developer existingDeveloper = developerRepository.findById(developerId)
+                .orElseThrow(() -> new EntityNotFoundException("Developer not found with ID: " + developerId));
+
+        Developer previousDeveloper = createDeveloperCopy(existingDeveloper);
+        Double oldSalary = existingDeveloper.getSalary();
+
+        existingDeveloper.setSalary(newSalary);
+        Developer savedDeveloper = developerRepository.save(existingDeveloper);
+
+        // Log the salary update with special action type
+        auditService.logAction("Developer", developerId.toString(), "SALARY_UPDATE", actorName, savedDeveloper, previousDeveloper);
+
+        log.info("Developer salary updated from {} to {} for ID: {}", oldSalary, newSalary, developerId);
+        return savedDeveloper;
+    }
+
+    // Read operations (no audit logging needed)
+    public Optional<Developer> getDeveloperById(Long developerId) {
+        return developerRepository.findById(developerId);
+    }
+
+    public List<Developer> getAllDevelopers() {
+        return developerRepository.findAll();
+    }
+
+    public Page<Developer> getDevelopersPaginated(Pageable pageable) {
+        return developerRepository.findAll(pageable);
+    }
+
+    public List<Developer> getDevelopersByRole(String role) {
+        return developerRepository.findByRole(role);
+    }
+
+    public List<Developer> getDevelopersByExperienceLevel(String experienceLevel) {
+        return developerRepository.findByExperienceLevel(experienceLevel);
+    }
+
+    public List<Developer> getDevelopersByDepartment(String department) {
+        return developerRepository.findByDepartment(department);
+    }
+
+    public List<Developer> getDevelopersByStatus(String status) {
+        return developerRepository.findByStatus(status);
+    }
+
+    public List<Developer> getDevelopersBySkill(String skill) {
+        return developerRepository.findBySkillsContaining(skill);
+    }
+
+    // Helper method to create a copy for audit logging
+    private Developer createDeveloperCopy(Developer original) {
+        Developer copy = new Developer();
+        copy.setId(original.getId());
+        copy.setName(original.getName());
+        copy.setEmail(original.getEmail());
+        copy.setRole(original.getRole());
+        copy.setExperienceLevel(original.getExperienceLevel());
+        copy.setSkills(original.getSkills() != null ? List.copyOf(original.getSkills()) : null);
+        copy.setDepartment(original.getDepartment());
+        copy.setSalary(original.getSalary());
+        copy.setHireDate(original.getHireDate());
+        copy.setStatus(original.getStatus());
+        copy.setCreatedAt(original.getCreatedAt());
+        copy.setUpdatedAt(original.getUpdatedAt());
+        return copy;
     }
 }

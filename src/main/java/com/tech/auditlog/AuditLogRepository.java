@@ -30,11 +30,11 @@ public interface AuditLogRepository extends MongoRepository<AuditLog, String> {
     // Find logs by entity type and actor name
     Page<AuditLog> findByEntityTypeAndActorName(String entityType, String actorName, Pageable pageable);
 
-    // Find logs by multiple criteria using custom query
+    // Fixed MongoDB query for multiple criteria
     @Query("{ $and: [ " +
-            "{ $or: [ { 'entityType': ?0 }, { $expr: { $eq: [?0, null] } } ] }, " +
-            "{ $or: [ { 'actorName': ?1 }, { $expr: { $eq: [?1, null] } } ] }, " +
-            "{ $or: [ { 'action': ?2 }, { $expr: { $eq: [?2, null] } } ] } " +
+            "{ $or: [ { $and: [ { 'entityType': { $exists: true } }, { 'entityType': ?0 } ] }, { $expr: { $eq: [?0, null] } } ] }, " +
+            "{ $or: [ { $and: [ { 'actorName': { $exists: true } }, { 'actorName': ?1 } ] }, { $expr: { $eq: [?1, null] } } ] }, " +
+            "{ $or: [ { $and: [ { 'action': { $exists: true } }, { 'action': ?2 } ] }, { $expr: { $eq: [?2, null] } } ] } " +
             "] }")
     Page<AuditLog> findByMultipleCriteria(String entityType, String actorName, String action, Pageable pageable);
 
@@ -44,6 +44,12 @@ public interface AuditLogRepository extends MongoRepository<AuditLog, String> {
     // Count logs by actor name
     long countByActorName(String actorName);
 
+    // Count logs by action
+    long countByAction(String action);
+
     // Find recent logs (last N records)
     List<AuditLog> findTop50ByOrderByTimestampDesc();
+
+    // Find logs by entity ID across all types
+    Page<AuditLog> findByEntityId(String entityId, Pageable pageable);
 }

@@ -1,149 +1,147 @@
 package com.tech.service;
 
-import com.tech.dto.CreateTaskDTO;
-import com.tech.dto.TaskDTO;
-import com.tech.mapper.TaskMapper;
-import com.tech.model.Developer;
-import com.tech.model.Project;
+import com.tech.auditlog.AuditService;
 import com.tech.model.Task;
-import com.tech.repository.DeveloperRepository;
-import com.tech.repository.ProjectRepository;
 import com.tech.repository.TaskRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.tech.auditlog.AuditService;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Slf4j
+@Transactional
 public class TaskService {
 
     private final TaskRepository taskRepository;
-    private final ProjectRepository projectRepository;
-    private final DeveloperRepository developerRepository;
-    private final TaskMapper taskMapper;
     private final AuditService auditService;
 
-    public Page<TaskDTO> getAllTasks(Pageable pageable) {
-        return taskRepository.findAll(pageable)
-                .map(taskMapper::toDto);
-    }
-
-    public TaskDTO getTaskById(Integer id) {
-        Task task = taskRepository.findById(Long.valueOf(id))
-                .orElseThrow(() -> new EntityNotFoundException("Task not found with id: " + id));
-        return taskMapper.toDto(task);
-    }
-
-    public Page<TaskDTO> getTasksByProjectId(Integer projectId, Pageable pageable) {
-        return taskRepository.findByProjectId(Long.valueOf(projectId), pageable)
-                .map(taskMapper::toDto);
-    }
-
-    public Page<TaskDTO> getTasksByDeveloperId(Integer developerId, Pageable pageable) {
-        return taskRepository.findByAssignedDevelopersId(Long.valueOf(developerId), pageable)
-                .map(taskMapper::toDto);
-    }
-
-    @Transactional
-    public TaskDTO createTask(CreateTaskDTO createTaskDTO) {
-        Project project = projectRepository.findById(createTaskDTO.getProjectId())
-                .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + createTaskDTO.getProjectId()));
-
-        Task task = taskMapper.toEntity(createTaskDTO);
-        task.setProject(project);
-
-        if (createTaskDTO.getAssignedDeveloperIds() != null && !createTaskDTO.getAssignedDeveloperIds().isEmpty()) {
-            List<Developer> developers = developerRepository.findAllById(createTaskDTO.getAssignedDeveloperIds());
-            task.setAssignedDevelopers(developers);
-        }
+    public Task createTask(Task task, String actorName) {
+        log.info("Creating new task: {} by user: {}", task.getTitle(), actorName);
 
         Task savedTask = taskRepository.save(task);
 
-        // Log the creation
-        auditService.logAction("Task", savedTask.getId().toString(),
-                "CREATE", getCurrentUser(), savedTask);
+        // Log the create action
+        auditService.logAction("Task", savedTask.getId().toString(), "CREATE", actorName, savedTask);
 
-        return taskMapper.toDto(savedTask);
+        log.info("Task created successfully with ID: {}", savedTask.getId());
+        return savedTask;
     }
 
-    @Transactional
-    public TaskDTO updateTask(Integer id, CreateTaskDTO updateTaskDTO) {
-        Task existingTask = taskRepository.findById(Long.valueOf(id))
-                .orElseThrow(() -> new EntityNotFoundException("Task not found with id: " + id));
+    public Task updateTask(Long taskId, Task updatedTask, String actorName) {
+        log.info("Updating task with ID: {} by user: {}", taskId, actorName);
 
-        // Store previous state for audit
-        Task previousState = new Task();
-        previousState.setId(existingTask.getId());
-        previousState.setTitle(existingTask.getTitle());
-        previousState.setDescription(existingTask.getDescription());
-        previousState.setStatus(existingTask.getStatus());
-        previousState.setDueDate(existingTask.getDueDate());
-        previousState.setProject(existingTask.getProject());
-        previousState.setAssignedDevelopers(existingTask.getAssignedDevelopers());
+        Task existingTask = taskRepository.findById(taskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with ID: " + taskId));
 
-        taskMapper.updateEntityFromDto(updateTaskDTO, existingTask);
+        // Create a copy of the existing task for audit logging
+        Task previousTask = createTaskCopy(existingTask);
 
-        if (updateTaskDTO.getAssignedDeveloperIds() != null) {
-            List<Developer> developers = developerRepository.findAllById(updateTaskDTO.getAssignedDeveloperIds());
-            existingTask.setAssignedDevelopers(developers);
-        }
+        // Update the task fields
+        existingTask.setTitle(updatedTask.getTitle());
+        existingTask.setDescription(updatedTask.getDescription());
+        existingTask.setStatus(updatedTask.getStatus());
+//        existingTask.setPriority(updatedTask.getPriority());
+        existingTask.setDueDate(updatedTask.getDueDate());
+//        existingTask.setAssignedTo(updatedTask.getAssignedTo());
+//        existingTask.setEstimatedHours(updatedTask.getEstimatedHours());
+//        existingTask.setActualHours(updatedTask.getActualHours());
+//        existingTask.setProjectId(updatedTask.getProjectId());
 
-        Task updatedTask = taskRepository.save(existingTask);
+        Task savedTask = taskRepository.save(existingTask);
 
-        // Log the update
-        auditService.logAction("Task", updatedTask.getId().toString(),
-                "UPDATE", getCurrentUser(), updatedTask, previousState);
+        // Log the update action with both current and previous data
+        auditService.logAction("Task", taskId.toString(), "UPDATE", actorName, savedTask, previousTask);
 
-        return taskMapper.toDto(updatedTask);
+        log.info("Task updated successfully with ID: {}", taskId);
+        return savedTask;
     }
 
-    @Transactional
-    public void deleteTask(Integer id) {
-        Task task = taskRepository.findById(Long.valueOf(id))
-                .orElseThrow(() -> new EntityNotFoundException("Task not found with id: " + id));
+    public void deleteTask(Long taskId, String actorName) {
+        log.info("Deleting task with ID: {} by user: {}", taskId, actorName);
 
-        // Log the deletion before actually deleting
-        auditService.logAction("Task", id.toString(),
-                "DELETE", getCurrentUser(), task);
+        Task existingTask = taskRepository.findById(taskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with ID: " + taskId));
 
-        taskRepository.deleteById(Long.valueOf(id));
+        taskRepository.deleteById(taskId);
+
+        // Log the delete action
+        auditService.logAction("Task", taskId.toString(), "DELETE", actorName, null, existingTask);
+
+        log.info("Task deleted successfully with ID: {}", taskId);
     }
 
-    @Transactional
-    public TaskDTO assignDeveloperToTask(Integer taskId, Integer developerId) {
-        Task task = taskRepository.findById(Long.valueOf(taskId))
-                .orElseThrow(() -> new EntityNotFoundException("Task not found with id: " + taskId));
+    // Task status update with audit logging
+    public Task updateTaskStatus(Long taskId, String newStatus, String actorName) {
+        log.info("Updating task status for ID: {} to {} by user: {}", taskId, newStatus, actorName);
 
-        Developer developer = developerRepository.findById(Long.valueOf(developerId))
-                .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + developerId));
+        Task existingTask = taskRepository.findById(taskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with ID: " + taskId));
 
-        // Store previous state for audit
-        Task previousState = new Task();
-        previousState.setId(task.getId());
-        previousState.setAssignedDevelopers(List.copyOf(task.getAssignedDevelopers()));
+        Task previousTask = createTaskCopy(existingTask);
+        String oldStatus = existingTask.getStatus();
 
-        if (!task.getAssignedDevelopers().contains(developer)) {
-            task.getAssignedDevelopers().add(developer);
-            taskRepository.save(task);
+        existingTask.setStatus(newStatus);
+        Task savedTask = taskRepository.save(existingTask);
 
-            // Log the assignment
-            auditService.logAction("Task", taskId.toString(),
-                    "ASSIGN_DEVELOPER", getCurrentUser(), task, previousState);
-        }
+        // Log the status update with specific description
+        auditService.logAction("Task", taskId.toString(), "STATUS_UPDATE", actorName, savedTask, previousTask);
 
-        return taskMapper.toDto(task);
+        log.info("Task status updated from {} to {} for ID: {}", oldStatus, newStatus, taskId);
+        return savedTask;
     }
 
-    private String getCurrentUser() {
-        // In a real application, this would get the current authenticated user
-        // For now, return a default value
-        return "system";
+    // Read operations (no audit logging needed)
+    public Optional<Task> getTaskById(Long taskId) {
+        return taskRepository.findById(taskId);
+    }
+
+    public List<Task> getAllTasks() {
+        return taskRepository.findAll();
+    }
+
+    public Page<Task> getTasksPaginated(Pageable pageable) {
+        return taskRepository.findAll(pageable);
+    }
+
+    public List<Task> getTasksByStatus(String status) {
+        return taskRepository.findByStatus(status);
+    }
+
+    public List<Task> getTasksByAssignedTo(String assignedTo) {
+        return taskRepository.findByAssignedTo(assignedTo);
+    }
+
+    public List<Task> getTasksByProjectId(Long projectId) {
+        return taskRepository.findByProjectId(projectId);
+    }
+
+    public List<Task> getTasksByPriority(String priority) {
+        return taskRepository.findByPriority(priority);
+    }
+
+    // Helper method to create a copy for audit logging
+    private Task createTaskCopy(Task original) {
+        Task copy = new Task();
+        copy.setId(original.getId());
+        copy.setTitle(original.getTitle());
+        copy.setDescription(original.getDescription());
+        copy.setStatus(original.getStatus());
+//        copy.setPriority(original.getPriority());
+        copy.setDueDate(original.getDueDate());
+//        copy.setAssignedTo(original.getAssignedTo());
+//        copy.setEstimatedHours(original.getEstimatedHours());
+//        copy.setActualHours(original.getActualHours());
+//        copy.setProjectId(original.getProjectId());
+//        copy.setCreatedAt(original.getCreatedAt());
+//        copy.setUpdatedAt(original.getUpdatedAt());
+//        return copy;
     }
 }

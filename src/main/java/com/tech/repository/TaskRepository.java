@@ -13,7 +13,10 @@ import java.util.List;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
-
+    List<Task> findByStatus(TaskStatus status);
+    List<Task> findByAssignedTo(String assignedTo);
+    List<Task> findByProjectId(Long projectId);
+    List<Task> findByPriority(String priority);
     // Find tasks by project id
     Page<Task> findByProjectId(Long projectId, Pageable pageable);
 
