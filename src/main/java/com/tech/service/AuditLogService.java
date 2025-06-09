@@ -39,7 +39,7 @@ public class AuditLogService {
             AuditLog log = AuditLog.builder()
                     .actorType("Task")
                     .actionType(action)
-                    .actor(taskDTO.toString()) // Assuming taskDTO has a meaningful toString() method
+                    .actor(taskDTO.toString())
                     .username("admin")
                     .timestamp(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
                     .dataSnapshot(objectMapper.writeValueAsString(taskDTO))
@@ -54,7 +54,7 @@ public class AuditLogService {
             AuditLog log = AuditLog.builder()
                     .actorType("Developer")
                     .actionType(action)
-                    .actor(developerDTO.toString()) // Assuming developerDTO has a meaningful toString() method
+                    .actor(developerDTO.toString())
                     .username("admin")
                     .timestamp(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
                     .dataSnapshot(objectMapper.writeValueAsString(developerDTO))

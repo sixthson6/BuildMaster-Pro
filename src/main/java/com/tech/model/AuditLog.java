@@ -14,11 +14,12 @@ import java.time.LocalDateTime;
 public class AuditLog {
     @Id
     private String id;
-    private String actorType; // e.g., "Project", "Task", "Developer"
-    private String actionType; // CREATE, UPDATE, DELETE
+    private String actorType;
+    private String actionType;
     private LocalDateTime timestamp;
+    private String entityType;
     private String actor;
-    private String username; // mock or real user
-    private Object dataSnapshot; // entity JSON
+    private String username;
+    private Object dataSnapshot;
 }
 

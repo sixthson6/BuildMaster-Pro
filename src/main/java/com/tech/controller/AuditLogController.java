@@ -19,10 +19,10 @@ public class AuditLogController {
         return auditLogRepository.findAll();
     }
 
-//    @GetMapping("/entity/{type}")
-//    public List<AuditLog> getLogsByEntityType(@PathVariable String type) {
-//        return auditLogRepository.findByEntityType(type);
-//    }
+    @GetMapping("/entity/{type}")
+    public List<AuditLog> getLogsByEntityType(@PathVariable String type) {
+        return auditLogRepository.findByEntityType(type);
+    }
 
     @GetMapping("/actor/{actor}")
     public List<AuditLog> getLogsByActor(@PathVariable String actor) {
