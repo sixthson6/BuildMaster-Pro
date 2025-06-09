@@ -19,6 +19,8 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMapper projectMapper;
+    private final AuditLogService auditLogService;
+//    private final CreateProjectDTO createProjectDTO;
 
     public Page<ProjectDTO> getAllProjects(Pageable pageable) {
         return projectRepository.findAll(pageable)
@@ -35,7 +37,9 @@ public class ProjectService {
     public ProjectDTO createProject(CreateProjectDTO createProjectDTO) {
         Project project = projectMapper.toEntity(createProjectDTO);
         Project savedProject = projectRepository.save(project);
-        return projectMapper.toDto(savedProject);
+        ProjectDTO dto = projectMapper.toDto(savedProject);
+        auditLogService.logProjectAction("CREATE", dto);
+        return dto;
     }
 
     @Transactional
@@ -45,14 +49,17 @@ public class ProjectService {
 
         projectMapper.updateEntityFromDto(updateProjectDTO, existingProject);
         Project updatedProject = projectRepository.save(existingProject);
-        return projectMapper.toDto(updatedProject);
+        ProjectDTO dto = projectMapper.toDto(updatedProject);
+        auditLogService.logProjectAction("UPDATE", dto);
+        return dto;
     }
 
     @Transactional
     public void deleteProject(Long id) {
-        if (!projectRepository.existsById(id)) {
-            throw new EntityNotFoundException("Project not found with id: " + id);
-        }
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + id));
+        ProjectDTO dto = projectMapper.toDto(project);
         projectRepository.deleteById(id);
+        auditLogService.logProjectAction("DELETE", dto);
     }
 }

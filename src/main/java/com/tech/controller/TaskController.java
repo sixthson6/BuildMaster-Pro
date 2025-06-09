@@ -4,6 +4,7 @@ import com.tech.dto.CreateTaskDTO;
 import com.tech.dto.TaskDTO;
 import com.tech.service.TaskService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,7 @@ import jakarta.validation.Valid;
 public class TaskController {
 
     private final TaskService taskService;
-
+    @Cacheable
     @GetMapping
     public ResponseEntity<Page<TaskDTO>> getAllTasks(Pageable pageable) {
         Page<TaskDTO> tasks = taskService.getAllTasks(pageable);

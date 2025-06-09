@@ -20,6 +20,7 @@ public class DeveloperService {
 
     private final DeveloperRepository developerRepository;
     private final DeveloperMapper developerMapper;
+    private final AuditLogService auditLogService;
 
 
     public Page<DeveloperDTO> getAllDevelopers(Pageable pageable) {
@@ -38,7 +39,9 @@ public class DeveloperService {
     public DeveloperDTO createDeveloper(CreateDeveloperDTO createDeveloperDTO) {
         Developer developer = developerMapper.toEntity(createDeveloperDTO);
         Developer savedDeveloper = developerRepository.save(developer);
-        return developerMapper.toDto(savedDeveloper);
+        DeveloperDTO dto = developerMapper.toDto(savedDeveloper);
+        auditLogService.logDeveloperAction("CREATE", dto);
+        return dto;
     }
 
     @Transactional
@@ -48,7 +51,9 @@ public class DeveloperService {
 
         developerMapper.updateEntityFromDto(updateDeveloperDTO, existingDeveloper);
         Developer updatedDeveloper = developerRepository.save(existingDeveloper);
-        return developerMapper.toDto(updatedDeveloper);
+        DeveloperDTO dto = developerMapper.toDto(updatedDeveloper);
+        auditLogService.logDeveloperAction("UPDATE", dto);
+        return dto;
     }
 
     @Transactional
@@ -57,5 +62,6 @@ public class DeveloperService {
             throw new EntityNotFoundException("Developer not found with id: " + id);
         }
         developerRepository.deleteById(id);
+        auditLogService.logDeveloperAction("DELETE", new DeveloperDTO());
     }
 }

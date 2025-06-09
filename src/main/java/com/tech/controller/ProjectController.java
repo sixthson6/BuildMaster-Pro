@@ -4,6 +4,7 @@ import com.tech.dto.CreateProjectDTO;
 import com.tech.dto.ProjectDTO;
 import com.tech.service.ProjectService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,7 @@ import jakarta.validation.Valid;
 public class ProjectController {
 
     private final ProjectService projectService;
-
+    @Cacheable
     @GetMapping
     public ResponseEntity<Page<ProjectDTO>> getAllProjects(Pageable pageable) {
         Page<ProjectDTO> projects = projectService.getAllProjects(pageable);
