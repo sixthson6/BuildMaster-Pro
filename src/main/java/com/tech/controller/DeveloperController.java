@@ -4,6 +4,7 @@ import com.tech.dto.CreateDeveloperDTO;
 import com.tech.dto.DeveloperDTO;
 import com.tech.service.DeveloperService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,7 @@ import jakarta.validation.Valid;
 public class DeveloperController {
 
     private final DeveloperService developerService;
-
+    @Cacheable
     @GetMapping
     public ResponseEntity<Page<DeveloperDTO>> getAllDevelopers(Pageable pageable) {
         Page<DeveloperDTO> developers = developerService.getAllDevelopers(pageable);
