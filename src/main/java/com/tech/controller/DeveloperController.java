@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/developers")
+@RequestMapping("/api/v1/developers")
 @RequiredArgsConstructor
 public class DeveloperController {
 
