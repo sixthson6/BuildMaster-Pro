@@ -1,4 +1,4 @@
-package com.tech.security.handler;
+package com.tech.security.service;
 
 import com.tech.security.repository.RoleRepository;
 import com.tech.security.repository.UserRepository;
@@ -21,9 +21,9 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class OAuth2LoginSuccessHandler {
+public class OAuth2UserProcessingService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OAuth2LoginSuccessHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(OAuth2UserProcessingService.class);
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
