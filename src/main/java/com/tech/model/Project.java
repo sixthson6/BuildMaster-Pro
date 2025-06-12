@@ -28,7 +28,6 @@ public class Project {
     private String description;
 
     @NotNull
-//    @Builder.Default
     private LocalDate deadline;
 
     @Enumerated(EnumType.STRING)
