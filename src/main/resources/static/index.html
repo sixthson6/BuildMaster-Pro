@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background-color: #f3f4f6; /* Light gray background */
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .card {
+      background-color: #ffffff;
+      border-radius: 0.75rem; /* Rounded corners */
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+    }
+    .input-field {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      box-sizing: border-box; /* Include padding in width */
+    }
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .btn-primary {
+      background-color: #4f46e5; /* Indigo 600 */
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background-color: #4338ca; /* Indigo 700 */
+    }
+    .btn-secondary {
+      background-color: #ef4444; /* Red 500 */
+      color: #ffffff;
+    }
+    .btn-secondary:hover {
+      background-color: #dc2626; /* Red 600 */
+    }
+    .tab-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem 0.5rem 0 0; /* Rounded top corners only */
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      background-color: #e5e7eb; /* Gray 200 */
+      color: #4b5563; /* Gray 700 */
+      border-bottom: 3px solid transparent;
+    }
+    .tab-btn.active {
+      background-color: #ffffff;
+      color: #4f46e5; /* Indigo 600 */
+      border-bottom-color: #4f46e5; /* Highlight active tab */
+    }
+    .tab-content {
+      border: 1px solid #e5e7eb;
+      border-top: none;
+      border-radius: 0 0 0.75rem 0.75rem; /* Rounded bottom corners */
+      padding: 1.5rem;
+      background-color: #ffffff;
+    }
+    .table-container {
+      overflow-x: auto; /* Enable horizontal scrolling for small screens */
+      border-radius: 0.5rem;
+      border: 1px solid #e5e7eb;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    th {
+      background-color: #f9fafb; /* Light gray for headers */
+      font-weight: 600;
+      color: #374151; /* Darker text */
+    }
+    tr:last-child td {
+      border-bottom: none; /* No border for the last row */
+    }
+    .message-box {
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      text-align: center;
+    }
+    .message-box.success {
+      background-color: #d1fae5; /* Green 100 */
+      color: #065f46; /* Green 800 */
+    }
+    .message-box.error {
+      background-color: #fee2e2; /* Red 100 */
+      color: #991b1b; /* Red 800 */
+    }
+    .loading-spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #4f46e5;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+<div class="container">
+  <!-- Login Section -->
+  <div id="login-section" class="card w-full sm:w-96">
+    <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Admin Login</h2>
+    <div id="login-message" class="message-box hidden"></div>
+    <form id="login-form">
+      <input type="email" id="email" class="input-field" placeholder="Email" required>
+      <input type="password" id="password" class="input-field" placeholder="Password" required>
+      <button type="submit" id="login-button" class="btn btn-primary w-full">Log In</button>
+    </form>
+  </div>
+
+  <!-- Dashboard Section -->
+  <div id="dashboard-section" class="card hidden">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800">Admin Dashboard</h2>
+      <button id="logout-button" class="btn btn-secondary">Logout</button>
+    </div>
+    <div id="dashboard-message" class="message-box hidden"></div>
+
+    <div class="flex border-b border-gray-200 mb-4">
+      <button id="projects-tab" class="tab-btn active">Projects</button>
+      <button id="tasks-tab" class="tab-btn">Tasks</button>
+      <button id="developers-tab" class="tab-btn">Developers</button>
+    </div>
+
+    <div id="projects-content" class="tab-content">
+      <h3 class="text-xl font-semibold mb-4 text-gray-700">Projects List</h3>
+      <div id="projects-data" class="table-container">
+        <!-- Projects will be loaded here -->
+        <p class="text-gray-500 text-center py-4">Loading projects...</p>
+      </div>
+    </div>
+
+    <div id="tasks-content" class="tab-content hidden">
+      <h3 class="text-xl font-semibold mb-4 text-gray-700">Tasks List</h3>
+      <div id="tasks-data" class="table-container">
+        <!-- Tasks will be loaded here -->
+        <p class="text-gray-500 text-center py-4">Loading tasks...</p>
+      </div>
+    </div>
+
+    <div id="developers-content" class="tab-content hidden">
+      <h3 class="text-xl font-semibold mb-4 text-gray-700">Developers List</h3>
+      <div id="developers-data" class="table-container">
+        <!-- Developers will be loaded here -->
+        <p class="text-gray-500 text-center py-4">Loading developers...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_BASE_URL = 'http://localhost:8080/api/v1'; // Your Spring Boot API base URL
+  const TOKEN_KEY = 'adminJwtToken'; // Key for storing JWT in localStorage
+
+  // Get DOM elements
+  const loginSection = document.getElementById('login-section');
+  const dashboardSection = document.getElementById('dashboard-section');
+  const loginForm = document.getElementById('login-form');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const loginButton = document.getElementById('login-button');
+  const logoutButton = document.getElementById('logout-button');
+  const loginMessage = document.getElementById('login-message');
+  const dashboardMessage = document.getElementById('dashboard-message');
+
+  const projectsTab = document.getElementById('projects-tab');
+  const tasksTab = document.getElementById('tasks-tab');
+  const developersTab = document.getElementById('developers-tab');
+
+  const projectsContent = document.getElementById('projects-content');
+  const tasksContent = document.getElementById('tasks-content');
+  const developersContent = document.getElementById('developers-content');
+
+  const projectsData = document.getElementById('projects-data');
+  const tasksData = document.getElementById('tasks-data');
+  const developersData = document.getElementById('developers-data');
+
+  // --- Utility Functions ---
+
+  /**
+   * Displays a message in a designated message box.
+   * @param {HTMLElement} messageBox The message box element.
+   * @param {string} message The message text.
+   * @param {string} type 'success' or 'error'.
+   */
+  function displayMessage(messageBox, message, type) {
+    messageBox.textContent = message;
+    messageBox.className = `message-box ${type}`; // Apply styling based on type
+    messageBox.classList.remove('hidden'); // Make it visible
+  }
+
+  /**
+   * Hides a designated message box.
+   * @param {HTMLElement} messageBox The message box element.
+   */
+  function hideMessage(messageBox) {
+    messageBox.classList.add('hidden');
+    messageBox.textContent = '';
+  }
+
+  /**
+   * Shows a loading indicator within a specified data container.
+   * @param {HTMLElement} container The data container element (e.g., projectsData).
+   */
+  function showLoading(container) {
+    container.innerHTML = '<p class="text-gray-500 text-center py-4"><span class="loading-spinner"></span> Loading data...</p>';
+  }
+
+  /**
+   * Makes an authenticated API request.
+   * @param {string} endpoint The API endpoint (e.g., '/projects').
+   * @param {string} method The HTTP method (e.g., 'GET', 'POST').
+   * @param {Object} [body] The request body for POST/PUT requests.
+   * @returns {Promise<Object>} The JSON response.
+   */
+  async function authenticatedFetch(endpoint, method = 'GET', body = null) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      displayMessage(dashboardMessage, 'Authentication token missing. Please log in.', 'error');
+      logout(); // Force logout if token is missing
+      throw new Error('Authentication token missing');
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+
+    const options = {
+      method,
+      headers
+    };
+
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          displayMessage(dashboardMessage, 'Session expired or unauthorized. Please log in again.', 'error');
+          logout();
+        }
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(`API Error: ${response.status} - ${errorData.message || response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Authenticated fetch error:', error);
+      displayMessage(dashboardMessage, error.message, 'error');
+      throw error;
+    }
+  }
+
+  // --- Core Logic ---
+
+  /**
+   * Handles user login.
+   * @param {Event} event The form submission event.
+   */
+  async function handleLogin(event) {
+    event.preventDefault(); // Prevent default form submission
+
+    hideMessage(loginMessage);
+    loginButton.textContent = 'Logging In...';
+    loginButton.disabled = true;
+
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed.');
+      }
+
+      const data = await response.json();
+      localStorage.setItem(TOKEN_KEY, data.token); // Store the JWT
+      displayMessage(loginMessage, 'Login successful!', 'success');
+      setTimeout(() => {
+        checkAuthAndRenderUI(); // Transition to dashboard
+      }, 500); // Small delay for message visibility
+
+    } catch (error) {
+      console.error('Login error:', error);
+      displayMessage(loginMessage, `Login failed: ${error.message}`, 'error');
+    } finally {
+      loginButton.textContent = 'Log In';
+      loginButton.disabled = false;
+    }
+  }
+
+  /**
+   * Handles user logout.
+   */
+  function logout() {
+    localStorage.removeItem(TOKEN_KEY); // Clear the JWT
+    loginSection.classList.remove('hidden');
+    dashboardSection.classList.add('hidden');
+    emailInput.value = '';
+    passwordInput.value = '';
+    hideMessage(dashboardMessage);
+    hideMessage(loginMessage);
+    displayMessage(loginMessage, 'You have been logged out.', 'success');
+    // Reset active tab to projects
+    switchTab('projects');
+  }
+
+  /**
+   * Renders project data in a table.
+   * @param {Array<Object>} projects The list of project objects.
+   */
+  function renderProjects(projects) {
+    if (projects.length === 0) {
+      projectsData.innerHTML = '<p class="text-gray-500 text-center py-4">No projects found.</p>';
+      return;
+    }
+    let tableHtml = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+            `;
+    projects.forEach(project => {
+      tableHtml += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${project.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${project.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.description || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.deadline || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.status || 'N/A'}</td>
+                    </tr>
+                `;
+    });
+    tableHtml += `
+                    </tbody>
+                </table>
+            `;
+    projectsData.innerHTML = tableHtml;
+  }
+
+  /**
+   * Renders task data in a table.
+   * @param {Array<Object>} tasks The list of task objects.
+   */
+  function renderTasks(tasks) {
+    if (tasks.length === 0) {
+      tasksData.innerHTML = '<p class="text-gray-500 text-center py-4">No tasks found.</p>';
+      return;
+    }
+    let tableHtml = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Devs</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+            `;
+    tasks.forEach(task => {
+      const assignedDevNames = task.assignedDevelopers
+              ? task.assignedDevelopers.map(dev => dev.name).join(', ')
+              : 'N/A';
+      tableHtml += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${task.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${task.title}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.description || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.status || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.dueDate || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.projectName || 'N/A'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500 max-w-xs overflow-hidden truncate" title="${assignedDevNames}">${assignedDevNames}</td>
+                    </tr>
+                `;
+    });
+    tableHtml += `
+                    </tbody>
+                </table>
+            `;
+    tasksData.innerHTML = tableHtml;
+  }
+
+  /**
+   * Renders developer data in a table.
+   * @param {Array<Object>} developers The list of developer objects.
+   */
+  function renderDevelopers(developers) {
+    if (developers.length === 0) {
+      developersData.innerHTML = '<p class="text-gray-500 text-center py-4">No developers found.</p>';
+      return;
+    }
+    let tableHtml = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skills</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+            `;
+    developers.forEach(developer => {
+      tableHtml += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${developer.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${developer.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${developer.email}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500 max-w-xs overflow-hidden truncate" title="${developer.skills}">${developer.skills || 'N/A'}</td>
+                    </tr>
+                `;
+    });
+    tableHtml += `
+                    </tbody>
+                </table>
+            `;
+    developersData.innerHTML = tableHtml;
+  }
+
+  /**
+   * Fetches and displays projects.
+   */
+  async function fetchAndDisplayProjects() {
+    showLoading(projectsData);
+    try {
+      const data = await authenticatedFetch('/projects'); // Adjust endpoint if pagination is needed (e.g., '/projects?page=0&size=10')
+      renderProjects(data.content); // Assuming a Page object with 'content' array
+      hideMessage(dashboardMessage); // Hide any previous error messages
+    } catch (error) {
+      renderProjects([]); // Render empty table on error
+      // Message already displayed by authenticatedFetch
+    }
+  }
+
+  /**
+   * Fetches and displays tasks.
+   */
+  async function fetchAndDisplayTasks() {
+    showLoading(tasksData);
+    try {
+      const data = await authenticatedFetch('/tasks'); // Adjust endpoint
+      renderTasks(data.content);
+      hideMessage(dashboardMessage);
+    } catch (error) {
+      renderTasks([]);
+    }
+  }
+
+  /**
+   * Fetches and displays developers.
+   */
+  async function fetchAndDisplayDevelopers() {
+    showLoading(developersData);
+    try {
+      const data = await authenticatedFetch('/developers'); // Adjust endpoint
+      renderDevelopers(data.content);
+      hideMessage(dashboardMessage);
+    } catch (error) {
+      renderDevelopers([]);
+    }
+  }
+
+  /**
+   * Switches between dashboard tabs.
+   * @param {string} activeTab The ID of the tab to activate ('projects', 'tasks', 'developers').
+   */
+  function switchTab(activeTab) {
+    // Remove active class from all tabs and hide all content
+    [projectsTab, tasksTab, developersTab].forEach(btn => btn.classList.remove('active'));
+    [projectsContent, tasksContent, developersContent].forEach(content => content.classList.add('hidden'));
+
+    // Add active class to the clicked tab and show its content
+    if (activeTab === 'projects') {
+      projectsTab.classList.add('active');
+      projectsContent.classList.remove('hidden');
+      fetchAndDisplayProjects();
+    } else if (activeTab === 'tasks') {
+      tasksTab.classList.add('active');
+      tasksContent.classList.remove('hidden');
+      fetchAndDisplayTasks();
+    } else if (activeTab === 'developers') {
+      developersTab.classList.add('active');
+      developersContent.classList.remove('hidden');
+      fetchAndDisplayDevelopers();
+    }
+  }
+
+  /**
+   * Checks for an existing token and renders the appropriate UI.
+   */
+  function checkAuthAndRenderUI() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      loginSection.classList.add('hidden');
+      dashboardSection.classList.remove('hidden');
+      switchTab('projects'); // Default to projects tab on login
+    } else {
+      loginSection.classList.remove('hidden');
+      dashboardSection.classList.add('hidden');
+    }
+  }
+
+  // --- Event Listeners ---
+  loginForm.addEventListener('submit', handleLogin);
+  logoutButton.addEventListener('click', logout);
+  projectsTab.addEventListener('click', () => switchTab('projects'));
+  tasksTab.addEventListener('click', () => switchTab('tasks'));
+  developersTab.addEventListener('click', () => switchTab('developers'));
+
+  // --- Initial Load ---
+  document.addEventListener('DOMContentLoaded', checkAuthAndRenderUI);
+</script>
+</body>
+</html>
