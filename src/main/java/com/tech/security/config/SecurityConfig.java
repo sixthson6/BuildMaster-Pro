@@ -1,9 +1,7 @@
 package com.tech.security.config;
 
-// IMPORTANT: Ensure correct imports for your *corrected* service/handler files
-import com.tech.security.oauth2.CustomOAuth2UserService;   // From com.tech.security.oauth2
-import com.tech.security.oauth2.OAuth2AuthenticationSuccessHandler; // From com.tech.security.oauth2 - Use this one instead
-
+import com.tech.security.oauth2.CustomOAuth2UserService;
+import com.tech.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import com.tech.security.jwt.AuthEntryPointJwt;
 import com.tech.security.jwt.AuthTokenFilter;
 import com.tech.security.jwt.JwtUtils;
@@ -96,12 +94,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").hasRole("ADMIN")
                         .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/code/**").permitAll()
                         .requestMatchers("/oauth2-success.html").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("OPTIONS", "/**").permitAll()
                         .anyRequest().authenticated()
                 )
