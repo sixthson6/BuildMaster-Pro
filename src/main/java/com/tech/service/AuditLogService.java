@@ -64,4 +64,29 @@ public class AuditLogService {
             throw new RuntimeException("Failed to serialize developer data for audit log", e);
         }
     }
+    public void logLoginAction(String actionType, String email, String loginMethod, String status) {
+        AuditLog log = AuditLog.builder()
+                .actorType("User")
+                .actionType(actionType)
+                .entityType("Authentication")
+                .actor(email) // The email or username attempting login
+                .username(email) // For login events, the username is the email
+                .timestamp(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
+                .dataSnapshot("{\"loginMethod\": \"" + loginMethod + "\", \"status\": \"" + status + "\"}")
+                .build();
+        auditLogRepository.save(log);
+    }
+
+    public void logUnauthorizedAccess(String username, String requestPath, String details) {
+        AuditLog log = AuditLog.builder()
+                .actorType("User")
+                .actionType("UNAUTHORIZED_ACCESS")
+                .entityType("Authorization")
+                .actor(username)
+                .username(username)
+                .timestamp(LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC))
+                .dataSnapshot("{\"requestPath\": \"" + requestPath + "\", \"details\": \"" + details + "\"}")
+                .build();
+        auditLogRepository.save(log);
+    }
 }
