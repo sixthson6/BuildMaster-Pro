@@ -1,0 +1,103 @@
+package com.tech.security.service;
+
+import com.tech.repository.DeveloperRepository;
+import com.tech.repository.TaskRepository;
+import com.tech.model.Developer; // Import the Developer model
+import com.tech.model.Task;
+import com.tech.security.model.User;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+import java.util.List; // Import List
+
+/**
+ * AccessChecker provides custom security logic for Spring Security's @PreAuthorize
+ * expressions. It evaluates whether the currently authenticated user has
+ * ownership or specific rights over a resource.
+ */
+@Component
+@RequiredArgsConstructor
+public class AccessChecker {
+
+    private static final Logger logger = LoggerFactory.getLogger(AccessChecker.class);
+
+    private final TaskRepository taskRepository;
+    private final DeveloperRepository developerRepository;
+
+    /**
+     * Checks if the currently authenticated user is one of the assigned developers
+     * of a specific task. This method is intended to be used in Spring Security's
+     * @PreAuthorize expressions, like @PreAuthorize("@accessChecker.isTaskOwner(#taskId)").
+     *
+     * @param taskId The ID of the task to check ownership for.
+     * @return true if the current user is an assigned developer of the task, false otherwise.
+     */
+    public boolean isTaskOwner(Long taskId) {
+        // 1. Get the current authenticated user's email
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            logger.warn("AccessChecker: No authenticated user found for task ownership check.");
+            return false;
+        }
+
+        String currentUserEmail;
+        // Determine the current user's email from the SecurityContext
+        if (authentication.getPrincipal() instanceof User) {
+            currentUserEmail = ((User) authentication.getPrincipal()).getEmail();
+        } else if (authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+            // This handles cases where UserDetailsImpl (if you have a separate one) is the principal
+            currentUserEmail = ((org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal()).getUsername();
+        } else if (authentication.getPrincipal() instanceof String) {
+            currentUserEmail = (String) authentication.getPrincipal();
+            if ("anonymousUser".equals(currentUserEmail)) {
+                logger.warn("AccessChecker: Anonymous user attempting task ownership check.");
+                return false;
+            }
+        } else {
+            logger.error("AccessChecker: Unexpected principal type for task ownership check: {}", authentication.getPrincipal().getClass().getName());
+            return false;
+        }
+
+        if (currentUserEmail == null || currentUserEmail.isEmpty()) {
+            logger.warn("AccessChecker: Current user email is null or empty for task ownership check.");
+            return false;
+        }
+
+        logger.debug("AccessChecker: Checking ownership for task ID {} by user with email {}", taskId, currentUserEmail);
+
+        // 2. Retrieve the task by its ID
+        Optional<Task> taskOptional = taskRepository.findById(taskId);
+        if (taskOptional.isEmpty()) {
+            logger.warn("AccessChecker: Task with ID {} not found for ownership check.", taskId);
+            return false;
+        }
+        Task task = taskOptional.get();
+
+        // 3. Find the Developer entity linked to the current user's email
+        Optional<Developer> currentDeveloperOptional = developerRepository.findByEmail(currentUserEmail);
+        if (currentDeveloperOptional.isEmpty()) {
+            logger.warn("AccessChecker: No Developer entity found matching current user's email: {}", currentUserEmail);
+            return false;
+        }
+        Developer currentDeveloper = currentDeveloperOptional.get();
+
+        // 4. Check if the current developer is in the task's assignedDevelopers list
+        List<Developer> assignedDevelopers = task.getAssignedDevelopers();
+        if (assignedDevelopers == null || assignedDevelopers.isEmpty()) {
+            logger.warn("AccessChecker: Task ID {} has no assigned developers.", taskId);
+            return false;
+        }
+
+        boolean isOwner = assignedDevelopers.stream()
+                .anyMatch(dev -> dev.getId().equals(currentDeveloper.getId()));
+
+        logger.info("AccessChecker: User {} (Developer ID: {}) is owner of task {}? {}",
+                currentUserEmail, currentDeveloper.getId(), taskId, isOwner);
+        return isOwner;
+    }
+}
