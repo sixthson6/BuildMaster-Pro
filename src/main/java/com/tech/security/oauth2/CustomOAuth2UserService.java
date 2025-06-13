@@ -29,7 +29,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder; // Injected from AppConfig
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
