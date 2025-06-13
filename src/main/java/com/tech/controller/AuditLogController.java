@@ -8,7 +8,7 @@ import com.tech.repository.AuditLogRepository;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/logs")
+@RequestMapping("/api/v1/logs")
 @RequiredArgsConstructor
 public class AuditLogController {
 

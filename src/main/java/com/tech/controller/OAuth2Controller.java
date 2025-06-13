@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
-@RequestMapping("/api/oauth2")
+@RequestMapping("/api/v1/oauth2")
 @RequiredArgsConstructor
 @Slf4j
 public class OAuth2Controller {

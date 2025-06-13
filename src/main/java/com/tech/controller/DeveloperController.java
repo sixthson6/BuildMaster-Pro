@@ -9,36 +9,41 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/developers")
+@RequestMapping("/api/v1/developers")
 @RequiredArgsConstructor
 public class DeveloperController {
 
     private final DeveloperService developerService;
     @Cacheable
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
     public ResponseEntity<Page<DeveloperDTO>> getAllDevelopers(Pageable pageable) {
         Page<DeveloperDTO> developers = developerService.getAllDevelopers(pageable);
         return ResponseEntity.ok(developers);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
     public ResponseEntity<DeveloperDTO> getDeveloperById(@PathVariable Long id) {
         DeveloperDTO developer = developerService.getDeveloperById(id);
         return ResponseEntity.ok(developer);
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<DeveloperDTO> createDeveloper(@Valid @RequestBody CreateDeveloperDTO createDeveloperDTO) {
         DeveloperDTO createdDeveloper = developerService.createDeveloper(createDeveloperDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdDeveloper);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<DeveloperDTO> updateDeveloper(@PathVariable Long id,
                                                         @Valid @RequestBody CreateDeveloperDTO updateDeveloperDTO) {
         DeveloperDTO updatedDeveloper = developerService.updateDeveloper(id, updateDeveloperDTO);
@@ -46,6 +51,7 @@ public class DeveloperController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<Void> deleteDeveloper(@PathVariable Long id) {
         developerService.deleteDeveloper(id);
         return ResponseEntity.noContent().build();
