@@ -32,7 +32,7 @@ public class JwtUtils {
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(key(), SignatureAlgorithm.HS256)
-                .compact(); // Build and serialize the JWT to a compact URL-safe string
+                .compact();
     }
 
     private Key key() {

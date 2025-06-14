@@ -107,7 +107,7 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService())
                         )
-                        .successHandler(oAuth2AuthenticationSuccessHandler()) // Use the correct handler
+                        .successHandler(oAuth2AuthenticationSuccessHandler())
                         .failureHandler((request, response, exception) -> {
                             logger.error("OAuth2 Login Failed: {} - {}", exception.getMessage(), exception.getCause() != null ? exception.getCause().getMessage() : "No cause");
                             try {
