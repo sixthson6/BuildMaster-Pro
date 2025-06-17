@@ -67,11 +67,7 @@ public class OAuth2Controller {
             com.tech.security.model.User user = (com.tech.security.model.User) userDetails;
 
             return ResponseEntity.ok(new JwtResponse(
-                    jwtToken,
-                    user.getId(),
-                    user.getUsername(),
-                    user.getEmail(),
-                    roles
+                    jwtToken
             ));
 
         } catch (Exception e) {

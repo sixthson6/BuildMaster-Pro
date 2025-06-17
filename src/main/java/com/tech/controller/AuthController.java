@@ -52,11 +52,7 @@ public class AuthController {
 
         auditLogService.logLoginAction("LOGIN_SUCCESS", loginRequest.getEmail(), "Traditional Login", "Success");
 
-        return ResponseEntity.ok(new JwtResponse(jwt,
-                userDetails.getId(),
-                userDetails.getUsername(),
-                userDetails.getEmail(),
-                roles));
+        return ResponseEntity.ok(new JwtResponse(jwt));
     }
 
     @PostMapping("/signup")
