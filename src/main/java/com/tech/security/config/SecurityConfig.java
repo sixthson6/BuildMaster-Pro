@@ -101,6 +101,10 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2-success.html").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("OPTIONS", "/**").permitAll()
+                        .requestMatchers("api/v1/projects").permitAll()
+                        .requestMatchers("api/v1/tasks").permitAll()
+                        .requestMatchers("users/{id}/tasks").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
