@@ -3,11 +3,13 @@ package com.tech.mapper;
 import com.tech.dto.CreateTaskDTO;
 import com.tech.dto.DeveloperDTO;
 import com.tech.dto.TaskDTO;
+import com.tech.dto.summary.TaskSummary;
 import com.tech.model.Developer;
 import com.tech.model.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,31 @@ public class TaskMapper {
                     .map(developerMapper::toDtoWithoutTasks)
                     .collect(Collectors.toList());
             dto.setAssignedDevelopers(developers);
+        }
+
+        return dto;
+    }
+
+    public TaskSummary toSummary(Task task) {
+        if (task == null) return null;
+
+        TaskSummary dto = new TaskSummary();
+        dto.setId(task.getId());
+        dto.setTitle(task.getTitle());
+        dto.setStatus(task.getStatus() != null ? task.getStatus().name() : null);
+        dto.setDueDate(task.getDueDate());
+
+        if (task.getProject() != null) {
+            dto.setProjectId(task.getProject().getId());
+            dto.setProjectName(task.getProject().getName());
+        }
+
+        if (task.getAssignedDevelopers() != null && !task.getAssignedDevelopers().isEmpty()) {
+            dto.setAssignedDeveloperNames(task.getAssignedDevelopers().stream()
+                    .map(Developer::getName)
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setAssignedDeveloperNames(Collections.emptyList());
         }
 
         return dto;

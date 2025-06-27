@@ -2,6 +2,7 @@ package com.tech.mapper;
 
 import com.tech.dto.CreateDeveloperDTO;
 import com.tech.dto.DeveloperDTO;
+import com.tech.dto.summary.DeveloperSummary;
 import com.tech.model.Developer;
 import com.tech.model.Task;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,26 @@ public class DeveloperMapper {
         dto.setEmail(developer.getEmail());
         dto.setSkills(developer.getSkills());
         dto.setTaskIds(developer.getTasks() != null ? developer.getTasks().stream().map(Task::getId).toList() : null);
+        return dto;
+    }
+
+    public DeveloperSummary toSummary(Developer developer) {
+        if (developer == null) return null;
+
+        DeveloperSummary dto = new DeveloperSummary();
+        dto.setId(developer.getId());
+        dto.setName(developer.getName());
+        dto.setEmail(developer.getEmail());
+        return dto;
+    }
+
+    public DeveloperSummary toSummaryDto(Developer developer) {
+        if (developer == null) return null;
+
+        DeveloperSummary dto = new DeveloperSummary();
+        dto.setId(developer.getId());
+        dto.setName(developer.getName());
+        dto.setEmail(developer.getEmail());
         return dto;
     }
 

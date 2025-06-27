@@ -2,6 +2,7 @@ package com.tech.mapper;
 
 import com.tech.dto.CreateProjectDTO;
 import com.tech.dto.ProjectDTO;
+import com.tech.dto.summary.ProjectSummary;
 import com.tech.model.Project;
 import com.tech.model.Task;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,16 @@ public class ProjectMapper {
            dto.setTaskIds(project.getTasks().stream().map(Task::getId).toList());
         }
 
+        return dto;
+    }
+
+    public ProjectSummary toSummary(Project project) {
+        if (project == null) return null;
+
+        ProjectSummary dto = new ProjectSummary();
+        dto.setId(project.getId());
+        dto.setName(project.getName());
+        dto.setStatus(project.getStatus() != null ? project.getStatus().name() : null);
         return dto;
     }
 
