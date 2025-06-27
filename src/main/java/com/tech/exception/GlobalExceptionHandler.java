@@ -10,10 +10,15 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import jakarta.persistence.EntityNotFoundException;
 
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 @RequiredArgsConstructor
@@ -23,36 +28,74 @@ public class GlobalExceptionHandler {
 
     private final AuditLogService auditLogService;
 
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorMessage> handleEntityNotFoundException(EntityNotFoundException ex, WebRequest request) {
+        logger.warn("Resource not found: {} - {}", ex.getMessage(), request.getDescription(false));
+
+        ErrorMessage message = new ErrorMessage(
+                HttpStatus.NOT_FOUND.value(),
+                LocalDateTime.now(),
+                ex.getMessage(),
+                request.getDescription(false));
+        return new ResponseEntity<>(message, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorMessage> handleValidationExceptions(MethodArgumentNotValidException ex, WebRequest request) {
+        String errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+
+        logger.warn("Validation failed: {} - {}", errors, request.getDescription(false));
+
+        ErrorMessage message = new ErrorMessage(
+                HttpStatus.BAD_REQUEST.value(),
+                LocalDateTime.now(),
+                "Validation Error: " + errors,
+                request.getDescription(false));
+        return new ResponseEntity<>(message, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorMessage> handleNoResourceFoundException(NoResourceFoundException ex, WebRequest request) {
+        logger.debug("No static resource found: {} - {}", ex.getMessage(), request.getDescription(false));
+
+        ErrorMessage message = new ErrorMessage(
+                HttpStatus.NOT_FOUND.value(),
+                LocalDateTime.now(),
+                "Resource not found: " + ex.getMessage(),
+                request.getDescription(false));
+        return new ResponseEntity<>(message, HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorMessage> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
         String username = "anonymous";
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated() && !(authentication.getPrincipal() instanceof String && "anonymousUser".equals(authentication.getPrincipal()))) {
-            username = authentication.getName(); // Get authenticated user's name
+            username = authentication.getName();
         }
 
         logger.warn("Access Denied: {} - {} by user {}", ex.getMessage(), request.getDescription(false), username);
-        // NEW: Log unauthorized access attempt (403 Forbidden)
         auditLogService.logUnauthorizedAccess(username, request.getDescription(false), "Insufficient privileges: " + ex.getMessage());
 
         ErrorMessage message = new ErrorMessage(
                 HttpStatus.FORBIDDEN.value(),
-                System.currentTimeMillis(),
+                LocalDateTime.now(),
                 "Access Denied: You do not have sufficient permissions to access this resource.",
                 request.getDescription(false));
         return new ResponseEntity<>(message, HttpStatus.FORBIDDEN);
     }
 
-
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorMessage> handleBadCredentialsException(BadCredentialsException ex, WebRequest request) {
-        String emailAttempted = "unknown";
-
         logger.warn("Authentication Failed: {} - {}", ex.getMessage(), request.getDescription(false));
 
         ErrorMessage message = new ErrorMessage(
                 HttpStatus.UNAUTHORIZED.value(),
-                System.currentTimeMillis(),
+                LocalDateTime.now(),
                 "Authentication Failed: Invalid email or password.",
                 request.getDescription(false));
         return new ResponseEntity<>(message, HttpStatus.UNAUTHORIZED);
@@ -66,33 +109,14 @@ public class GlobalExceptionHandler {
             username = authentication.getName();
         }
 
-        logger.error("An unexpected error occurred: {} - {} by user {}", ex.getMessage(), request.getDescription(false), username, ex); // Log full stack trace
+        logger.error("An unexpected error occurred: {} - {} by user {}", ex.getMessage(), request.getDescription(false), username, ex);
         auditLogService.logUnauthorizedAccess(username, request.getDescription(false), "Unexpected internal server error: " + ex.getMessage());
 
         ErrorMessage message = new ErrorMessage(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                System.currentTimeMillis(),
+                LocalDateTime.now(),
                 "An unexpected error occurred. Please try again later.",
                 request.getDescription(false));
         return new ResponseEntity<>(message, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    public static class ErrorMessage {
-        private int statusCode;
-        private long timestamp;
-        private String message;
-        private String description;
-
-        public ErrorMessage(int statusCode, long timestamp, String message, String description) {
-            this.statusCode = statusCode;
-            this.timestamp = timestamp;
-            this.message = message;
-            this.description = description;
-        }
-
-        public int getStatusCode() { return statusCode; }
-        public long getTimestamp() { return timestamp; }
-        public String getMessage() { return message; }
-        public String getDescription() { return description; }
     }
 }
