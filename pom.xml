@@ -139,6 +139,19 @@
             <version>5.14.2</version>
             <scope>test</scope>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+<!--            <version>3.5.0</version>-->
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/io.micrometer/micrometer-registry-prometheus -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+<!--            <scope>runtime</scope>-->
+<!--            <version>1.14.8</version>-->
+        </dependency>
     </dependencies>
 
     <build>
