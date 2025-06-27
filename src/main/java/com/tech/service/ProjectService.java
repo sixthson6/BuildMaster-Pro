@@ -2,11 +2,15 @@ package com.tech.service;
 
 import com.tech.dto.CreateProjectDTO;
 import com.tech.dto.ProjectDTO;
+import com.tech.dto.summary.ProjectSummary;
 import com.tech.mapper.ProjectMapper;
 import com.tech.model.Project;
 import com.tech.repository.ProjectRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,13 +24,14 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMapper projectMapper;
     private final AuditLogService auditLogService;
-//    private final CreateProjectDTO createProjectDTO;
 
-    public Page<ProjectDTO> getAllProjects(Pageable pageable) {
+    @Cacheable(value = "projectsList", key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort")
+    public Page<ProjectSummary> getAllProjects(Pageable pageable) {
         return projectRepository.findAll(pageable)
-                .map(projectMapper::toDto);
+                .map(projectMapper::toSummary);
     }
 
+    @Cacheable(value = "projectsList", key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort")
     public ProjectDTO getProjectById(Long id) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + id));
@@ -34,6 +39,8 @@ public class ProjectService {
     }
 
     @Transactional
+    @CachePut(value = "projectById", key = "#result.id")
+    @CacheEvict(value = "projectsList", allEntries = true)
     public ProjectDTO createProject(CreateProjectDTO createProjectDTO) {
         Project project = projectMapper.toEntity(createProjectDTO);
         Project savedProject = projectRepository.save(project);
@@ -43,6 +50,8 @@ public class ProjectService {
     }
 
     @Transactional
+    @CachePut(value = "projectById", key = "#id")
+    @CacheEvict(value = "projectsList", allEntries = true)
     public ProjectDTO updateProject(Long id, CreateProjectDTO updateProjectDTO) {
         Project existingProject = projectRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + id));
@@ -55,6 +64,7 @@ public class ProjectService {
     }
 
     @Transactional
+    @CacheEvict(value = {"projectById", "projectsList"}, key = "#id", allEntries = true)
     public void deleteProject(Long id) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + id));

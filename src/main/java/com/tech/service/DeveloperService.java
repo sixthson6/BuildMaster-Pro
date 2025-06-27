@@ -2,9 +2,12 @@ package com.tech.service;
 
 import com.tech.dto.CreateDeveloperDTO;
 import com.tech.dto.DeveloperDTO;
+import com.tech.dto.summary.DeveloperSummary;
 import com.tech.mapper.DeveloperMapper;
 import com.tech.model.Developer;
 import com.tech.repository.DeveloperRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.*;
@@ -22,13 +25,13 @@ public class DeveloperService {
     private final DeveloperMapper developerMapper;
     private final AuditLogService auditLogService;
 
-
-    public Page<DeveloperDTO> getAllDevelopers(Pageable pageable) {
+    @Cacheable(value = "developersList", key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort")
+    public Page<DeveloperSummary> getAllDevelopers(Pageable pageable) {
         return developerRepository.findAll(pageable)
-                .map((java.util.function.Function<? super Developer, ? extends DeveloperDTO>) developerMapper::toDto);
+                .map(developerMapper::toSummaryDto);
     }
 
-    @Cacheable("developers")
+    @Cacheable(value = "developerById", key = "#id")
     public DeveloperDTO getDeveloperById(Long id) {
         Developer developer = developerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + id));
@@ -36,6 +39,8 @@ public class DeveloperService {
     }
 
     @Transactional
+    @CachePut(value = "developerById", key = "#result.id")
+    @CacheEvict(value = "developersList", allEntries = true)
     public DeveloperDTO createDeveloper(CreateDeveloperDTO createDeveloperDTO) {
         Developer developer = developerMapper.toEntity(createDeveloperDTO);
         Developer savedDeveloper = developerRepository.save(developer);
@@ -45,6 +50,8 @@ public class DeveloperService {
     }
 
     @Transactional
+    @CachePut(value = "developerById", key = "#id")
+    @CacheEvict(value = "developersList", allEntries = true)
     public DeveloperDTO updateDeveloper(Long id, CreateDeveloperDTO updateDeveloperDTO) {
         Developer existingDeveloper = developerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Developer not found with id: " + id));
@@ -57,6 +64,7 @@ public class DeveloperService {
     }
 
     @Transactional
+    @CacheEvict(value = {"developerById", "developersList"}, key = "#id", allEntries = true)
     public void deleteDeveloper(Long id) {
         if (!developerRepository.existsById(id)) {
             throw new EntityNotFoundException("Developer not found with id: " + id);
