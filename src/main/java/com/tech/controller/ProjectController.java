@@ -2,6 +2,7 @@ package com.tech.controller;
 
 import com.tech.dto.CreateProjectDTO;
 import com.tech.dto.ProjectDTO;
+import com.tech.dto.summary.ProjectSummary;
 import com.tech.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -20,15 +21,14 @@ import jakarta.validation.Valid;
 public class ProjectController {
 
     private final ProjectService projectService;
-    @Cacheable
+
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
-    public ResponseEntity<Page<ProjectDTO>> getAllProjects(Pageable pageable) {
-        Page<ProjectDTO> projects = projectService.getAllProjects(pageable);
+//    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
+    public ResponseEntity<Page<ProjectSummary>> getAllProjects(Pageable pageable) {
+        Page<ProjectSummary> projects = projectService.getAllProjects(pageable);
         return ResponseEntity.ok(projects);
     }
 
-    @Cacheable
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
     public ResponseEntity<ProjectDTO> getProjectById(@PathVariable Long id) {

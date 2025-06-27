@@ -2,6 +2,7 @@ package com.tech.controller;
 
 import com.tech.dto.CreateDeveloperDTO;
 import com.tech.dto.DeveloperDTO;
+import com.tech.dto.summary.DeveloperSummary;
 import com.tech.service.DeveloperService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -20,11 +21,11 @@ import jakarta.validation.Valid;
 public class DeveloperController {
 
     private final DeveloperService developerService;
-    @Cacheable
+
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
-    public ResponseEntity<Page<DeveloperDTO>> getAllDevelopers(Pageable pageable) {
-        Page<DeveloperDTO> developers = developerService.getAllDevelopers(pageable);
+    public ResponseEntity<Page<DeveloperSummary>> getAllDevelopers(Pageable pageable) {
+        Page<DeveloperSummary> developers = developerService.getAllDevelopers(pageable);
         return ResponseEntity.ok(developers);
     }
 

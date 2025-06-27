@@ -2,6 +2,7 @@ package com.tech.controller;
 
 import com.tech.dto.CreateTaskDTO;
 import com.tech.dto.TaskDTO;
+import com.tech.dto.summary.TaskSummary;
 import com.tech.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,15 +22,13 @@ public class TaskController {
 
     private final TaskService taskService;
 
-    @Cacheable
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
-    public ResponseEntity<Page<TaskDTO>> getAllTasks(Pageable pageable) {
-        Page<TaskDTO> tasks = taskService.getAllTasks(pageable);
+//    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
+    public ResponseEntity<Page<TaskSummary>> getAllTasks(Pageable pageable) {
+        Page<TaskSummary> tasks = taskService.getAllTasks(pageable);
         return ResponseEntity.ok(tasks);
     }
 
-    @Cacheable
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'DEVELOPER', 'CONTRACTOR')")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
